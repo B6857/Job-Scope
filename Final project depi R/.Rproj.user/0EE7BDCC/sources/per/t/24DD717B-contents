@@ -1,0 +1,447 @@
+data=read.csv("C:/Users/Hp/Videos/.ipynb_checkpoints/R.FinalProject.csv",header = TRUE)
+str(data)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+
+cor_matrix = cor(data %>% select(where(is.numeric)))
+heatmap(cor_matrix, main="correlation matrix", col = heat.colors(10), scale ="none")
+print(cor_matrix)
+
+
+
+Q1 <- quantile(data$TotalCompensationEgp, 0.25)
+Q3 <- quantile(data$TotalCompensationEgp, 0.75)
+IQR <- Q3 - Q1
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+outliers <- data[data$TotalCompensationEgp < lower_bound | data$TotalCompensationEgp > upper_bound, ]
+outliers_data2=outliers
+print(outliers_data2)
+#print(Q1)
+# print(Q3)
+# print(IQR)
+# print(lower_bound)
+# print(upper_bound)
+
+
+# outliers
+boxplot(data$TotalCompensationEgp, 
+        main = "TotalCompensationEgp outliers ", 
+        ylab = "TotalCompensationEgp Rate", 
+        col = "lightblue")
+
+#Analysis outliers
+
+
+# count of level outliers
+
+pivot_table <- outliers_data2 %>%
+  group_by(Level) %>%
+  summarize(Count = n()) %>%
+  replace_na(list(Count = 0))
+print(pivot_table)
+
+
+
+# count IsEgp (outliers)
+pivot_table <- outliers_data2 %>%
+  group_by(IsEgp) %>%
+  summarize(Count = n()) %>%
+  replace_na(list(Count = 0))
+print(pivot_table)
+
+# Extract sizes and labels for the pie chart
+sizes <- pivot_table$Count
+labels <- pivot_table$IsEgp
+colors <- c('#ff9999','#66b3ff')  # Define colors for the pie chart
+explode <- rep(0.1, length(labels))  # Set explode effect
+
+# Create pie chart using base R
+pie(sizes, 
+    labels = paste0(labels, "\n(", sizes, ")"),  
+    col = colors, 
+    main = "Count of Entries by IsEgp Status (Outliers)", 
+    radius = 1, 
+    cex.main = 1.4)  # Font size for the title
+
+
+
+#count Total Compensation by Business Size and Market (outliers)
+pivot_table <- outliers_data2 %>%
+  group_by(BusinessSize, BusinessMarket) %>%
+  summarize(TotalCompensationEgp_count = n()) %>%
+  replace_na(list(TotalCompensationEgp_count = 0))
+print(pivot_table)
+
+
+
+
+#analysis All data
+
+#Average Total Compensation by Business Size and Market
+pivot_table = data %>%
+  group_by(BusinessSize, BusinessMarket) %>%
+  summarize(TotalCompensationEgp_mean = mean(TotalCompensationEgp, na.rm = TRUE)) %>%
+  replace_na(list(TotalCompensationEgp_mean = 0))
+print(pivot_table)
+
+
+#Business Size Distribution by Level
+filtered_data2 <- data %>%
+  filter(Level %in% c('Junior', 'Mid-level', 'Senior'))
+pivot_table <- filtered_data2 %>%
+  group_by(Level, BusinessSize) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = BusinessSize, values_from = Count, values_fill = list(Count = 0))
+print(pivot_table)
+
+
+#Degree Distribution
+pivot_table <- data %>%
+  group_by(Degree) %>%
+  summarize(Count = n()) %>%
+  replace_na(list(Count = 0))
+print(pivot_table)
+# Draw the bar graph
+ggplot(pivot_table, aes(x = Degree, y = Count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Count of Degrees", x = "Degree", y = "Count")
+
+
+
+
+#Business Size Distribution for No Degree
+filtered_data2 <- data %>%
+  filter(Degree == "No")
+pivot_table <- filtered_data2 %>%
+  group_by(Degree, BusinessSize) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = BusinessSize, values_from = Count, values_fill = list(Count = 0))
+print(pivot_table)
+
+
+
+#Distribution of Levels for No Degree
+filtered_data2 <- data %>%
+  filter(Degree == "No")
+pivot_table <- filtered_data2 %>%
+  group_by(Degree, Level) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = Level, values_from = Count, values_fill = list(Count = 0))
+print(pivot_table)
+ggplot(filtered_data2, aes(x = Level)) +
+  geom_bar(aes(fill = Level), show.legend = FALSE) +  # Distinct colors for each bar
+  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.3, size = 4, color = "black") +  # Add labels
+  theme_minimal() +
+  labs(title = "Distribution of Levels for No Degree", 
+       x = "Level", 
+       y = "Count") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white"),  # Clean white background
+    panel.grid.minor = element_blank()  # Hide minor gridlines
+  )
+
+
+#Business Line Distribution by Business Size
+pivot_table <- data %>%
+  group_by(BusinessSize, BusinessLine) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = BusinessLine, values_from = Count, values_fill = list(Count = 0))
+print(pivot_table)
+
+ggplot(data, aes(x = BusinessSize, fill = BusinessLine)) +
+  geom_bar(position = "stack", stat = "count") +  # Stacked bars to show distribution
+  geom_text(stat = 'count', aes(label = ..count..), position = position_stack(vjust = 0.5), size = 3, color = "white") +  # Add labels on the bars
+  theme_minimal() +
+  labs(title = "Business Line Distribution by Business Size", 
+       x = "Business Size", 
+       y = "Count") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(size = 12),  # Customize x-axis labels
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    legend.title = element_text(size = 12),  # Customize legend title
+    legend.text = element_text(size = 10)  # Customize legend text
+  )
+
+
+
+
+#count Gender
+pivot_table <- data %>%
+  group_by(Gender) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  replace_na(list(Count = 0))
+print(pivot_table)
+
+ggplot(pivot_table, aes(x = Gender, y = Count, fill = Gender)) +
+  geom_bar(stat = "identity") +  # Use the identity stat to plot the values from the pivot table
+  geom_text(aes(label = Count), vjust = -0.5, size = 4, color = "black") +  # Add labels to show count on bars
+  theme_minimal() +
+  labs(title = "Gender Distribution", 
+       x = "Gender", 
+       y = "Count") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(size = 12),  # Customize x-axis labels
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+#Female Distribution by Business Size and Market
+filtered_df <- data %>%
+  filter(Gender == "Female")
+pivot_table <- filtered_df %>%
+  group_by(Gender, BusinessSize, BusinessMarket) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = c(BusinessSize, BusinessMarket), values_from = Count, values_fill = list(Count = 0))
+cat("\nFemale Distribution by Business Size and Market:\n")
+print(pivot_table)
+
+# Reshape the data for plotting
+plot_data <- pivot_table %>%
+  pivot_longer(-Gender, names_to = c("BusinessSize", "BusinessMarket"), values_to = "Count", names_sep = "_")
+
+# Define colors for the plot
+colors <- c('#FF6F61', '#6B5B95', '#88B04B', '#F7CAC9', '#92A8D1', '#955251', 
+            '#B565A7', '#009B77', '#DD4124')
+
+# Create the stacked bar chart
+ggplot(plot_data, aes(x = Gender, y = Count, fill = interaction(BusinessSize, BusinessMarket))) +
+  geom_bar(stat = "identity", position = "stack", color = "black") +
+  scale_fill_manual(values = colors) +
+  labs(title = 'Female Distribution by Business Size and Market',
+       x = 'Gender',
+       y = 'Count') +
+  geom_text(aes(label = Count), position = position_stack(vjust = 0.5), size = 4, color = 'black') +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 10),
+        legend.position = "right") +
+  guides(fill = guide_legend(title = "Business Size and Market")) +
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        plot.title = element_text(size = 20, face = "bold"))
+ggsave("female_distribution_by_business_size_and_market.png", dpi = 300, width = 12, height = 6)
+
+
+
+
+pivot_table <- data %>%
+  group_by(Level) %>%
+  summarize(Mean_TotalCompensationEgp = mean(TotalCompensationEgp, na.rm = TRUE), .groups = 'drop') %>%
+  replace_na(list(Mean_TotalCompensationEgp = 0))  # Fill NA with 0 if needed
+print(pivot_table)
+
+ggplot(pivot_table, aes(x = Level, y = Mean_TotalCompensationEgp, fill = "steelblue")) +
+  geom_bar(stat = "identity", color = "black", show.legend = FALSE) +
+  geom_text(aes(label = format(Mean_TotalCompensationEgp, big.mark = ",", scientific = FALSE)), 
+            vjust = -0.5, size = 5, color = "black") +  # Add labels on top of bars
+  labs(title = 'Mean Total Compensation by Level',
+       x = 'Level',
+       y = 'Mean Total Compensation (Egp)') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        plot.title = element_text(size = 20, face = "bold")) +
+  scale_y_continuous(labels = scales::comma) +  # Format y-axis labels with commas
+  geom_hline(yintercept = 0, color = "black") +  # Add x=0 line
+  theme(panel.grid.major.y = element_line(linetype = "dashed", color = "gray"))  # Add grid lines
+ggsave("mean_total_compensation_by_level.png", dpi = 300, width = 12, height = 7)
+
+
+
+pivot_table <- data %>%
+  group_by(WorkSetting) %>%               
+  summarise(MeanTotalCompensation = mean(TotalCompensationEgp, na.rm = TRUE)) # Calculate mean
+print(pivot_table)
+ggplot(pivot_table, aes(x = WorkSetting, y = MeanTotalCompensation, fill = WorkSetting)) +
+  geom_bar(stat = "identity") +  # Use identity stat to plot the mean values from the pivot table
+  geom_text(aes(label = round(MeanTotalCompensation, 1)), vjust = -0.5, size = 4, color = "black") +  # Add labels showing the mean value rounded to 1 decimal
+  theme_minimal() +
+  labs(title = "Mean Total Compensation by Work Setting", 
+       x = "Work Setting", 
+       y = "Mean Total Compensation (EGP)") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+#count worksetting
+pivot_table <- data %>%
+  group_by(WorkSetting) %>%              
+  summarise(CountTotalCompensation = n())
+print(pivot_table)
+ggplot(pivot_table, aes(x = WorkSetting, y = CountTotalCompensation, fill = WorkSetting)) +
+  geom_bar(stat = "identity") +  # Use identity stat to plot the counts from the pivot table
+  geom_text(aes(label = CountTotalCompensation), vjust = -0.5, size = 4, color = "black") +  # Add labels showing the count on top of bars
+  theme_minimal() +
+  labs(title = "Count of Total Compensation by Work Setting", 
+       x = "Work Setting", 
+       y = "Count of Records") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+
+
+#Total Compensation by Business Size and Market
+pivot_table <- data %>%
+  group_by(BusinessSize, BusinessMarket) %>%      
+  summarise(CountTotalCompensation = n(), .groups = 'drop') %>%  
+  pivot_wider(names_from = BusinessMarket, values_from = CountTotalCompensation, values_fill = list(CountTotalCompensation = 0)) # Pivot wider
+print(pivot_table)
+
+
+
+
+
+pivot_table <- data %>%
+  group_by(BusinessFocus, BusinessMarket) %>%     
+  summarise(CountTotalCompensation = n(), .groups = 'drop') %>%  
+  pivot_wider(names_from = BusinessMarket, values_from = CountTotalCompensation, values_fill = list(CountTotalCompensation = 0))  
+print(pivot_table)
+plot_data <- pivot_table %>%
+  pivot_longer(cols = -BusinessFocus, names_to = "BusinessMarket", values_to = "CountTotalCompensation")  
+ggplot(plot_data, aes(x = BusinessFocus, y = CountTotalCompensation, fill = BusinessMarket)) +
+  geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart
+  geom_text(aes(label = CountTotalCompensation), position = position_stack(vjust = 0.5), size = 4, color = "black") +  
+  theme_minimal() +
+  labs(title = "Count of Total Compensation by Business Focus and Business Market", 
+       x = "Business Focus", 
+       y = "Count of Records") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+
+
+
+
+
+
+#'ID' by 'BusinessFocus' and 'BusinessLine'
+pivot_table <- data %>%
+  group_by(BusinessFocus, BusinessLine) %>%         
+  summarise(CountTotalCompensation = n(), .groups = 'drop') %>% 
+  pivot_wider(names_from = BusinessLine, values_from = CountTotalCompensation, values_fill = list(CountTotalCompensation = 0)) # Pivot wider
+print(pivot_table)
+plot_data <- pivot_table %>%
+  pivot_longer(cols = -BusinessFocus, names_to = "BusinessLine", values_to = "CountTotalCompensation")  # Convert back to long format for ggplot
+
+# Step 3: Draw the graph - stacked bar chart for Count of Total Compensation by BusinessFocus and BusinessLine
+ggplot(plot_data, aes(x = BusinessFocus, y = CountTotalCompensation, fill = BusinessLine)) +
+  geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart
+  geom_text(aes(label = CountTotalCompensation), position = position_stack(vjust = 0.5), size = 4, color = "black") +  # Add labels to bars
+  theme_minimal() +
+  labs(title = "Count of Total Compensation by Business Focus and Business Line", 
+       x = "Business Focus", 
+       y = "Count of Records") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+
+
+pivot_table <- data %>%
+  group_by(BusinessSize) %>%                    
+  summarise(CountTotalCompensation = n(), .groups = 'drop')
+print(pivot_table)
+ggplot(pivot_table, aes(x = BusinessSize, y = CountTotalCompensation, fill = BusinessSize)) +
+  geom_bar(stat = "identity") +  # Use identity stat to plot the counts from the pivot table
+  geom_text(aes(label = CountTotalCompensation), vjust = -0.5, size = 4, color = "black") +  # Add labels showing the count on top of bars
+  theme_minimal() +
+  labs(title = "Count of Total Compensation by Business Size", 
+       x = "Business Size", 
+       y = "Count of Records") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+#Average Total Compensation by Work Setting
+pivot_table <- data %>%
+  group_by(WorkSetting) %>%                               
+  summarise(MeanTotalCompensation = mean(TotalCompensationEgp, na.rm = TRUE), .groups = 'drop')
+print(pivot_table)
+ggplot(pivot_table, aes(x = WorkSetting, y = MeanTotalCompensation, fill = WorkSetting)) +
+  geom_bar(stat = "identity") +  # Use identity stat to plot the mean values from the pivot table
+  geom_text(aes(label = round(MeanTotalCompensation, 1)), vjust = -0.5, size = 4, color = "black") +  # Add labels showing the mean value rounded to 1 decimal
+  theme_minimal() +
+  labs(title = "Average Total Compensation by Work Setting", 
+       x = "Work Setting", 
+       y = "Average Total Compensation (EGP)") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center and bold the title
+    axis.title.x = element_text(size = 14),  # Larger font for x-axis label
+    axis.title.y = element_text(size = 14),  # Larger font for y-axis label
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for readability
+    axis.text.y = element_text(size = 12),  # Customize y-axis labels
+    panel.grid.major = element_line(color = "grey80"),  # Subtle grid lines
+    panel.background = element_rect(fill = "white")  # Clean white background
+  )
+
+
+
+
+
+
+
+
+
+
+
+
